@@ -1,0 +1,4 @@
+
+CREATE DATABASE admindb;
+
+CREATE EXTENSION plpython3u;

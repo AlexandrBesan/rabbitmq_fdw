@@ -1,0 +1,53 @@
+FROM rabbitmq:3.8-management-alpine
+ 
+
+COPY ./conf/* /etc/rabbitmq/
+
+
+
+#   {
+#     "vhosts":[
+#           {"name": "/"}
+#     ],
+
+#     "users": [
+#         { "name": "${RABBITMQ_DEFAULT_USER}", "password": "${RABBITMQ_DEFAULT_PASS}", "tags": "administrator" }
+#     ],
+
+#     "permissions":[
+#         { "user": "${RABBITMQ_DEFAULT_USER}", "vhost": "${RABBITMQ_DEFAULT_VHOST}", "configure": ".*", "write": ".*", "read": ".*" }
+#     ],
+#     "policies":[
+#           {"vhost":"/","name":"ha","pattern":"^test-", "definition":{"ha-mode":"all","ha-sync-mode":"automatic","ha-sync-batch-size":5}}
+#     ], 
+
+#     "queues": [
+#         {
+#             "name": "externally_configured_queue",
+#             "vhost": "/",
+#             "durable": true,
+#             "auto_delete": false,
+#             "arguments": {
+#                 "x-queue-type": "classic"
+#             }
+#         }
+#     ]
+#   }
+
+
+
+
+
+#   "vhosts":[
+#     {"name": "${RABBITMQ_DEFAULT_VHOST}"}
+# ],
+# "users": [
+#     { "name": "${RABBITMQ_DEFAULT_USER}", "password": "${RABBITMQ_DEFAULT_PASS}", "tags": "administrator" }
+# ],
+# "permissions":[
+#     { "user": "${RABBITMQ_DEFAULT_USER}", "vhost": "${RABBITMQ_DEFAULT_VHOST}", "configure": ".*", "write": ".*", "read": ".*" }
+# ],
+# "policies":[
+#     {"vhost":"${RABBITMQ_DEFAULT_VHOST}","name":"lagoon-ha","pattern":"${RABBITMQ_DEFAULT_HA_PATTERN}", "definition":{"ha-mode":"exactly","ha-params":2,"ha-sync-mode":"automatic","ha-sync-batch-size":5}}
+# ]
+# }
