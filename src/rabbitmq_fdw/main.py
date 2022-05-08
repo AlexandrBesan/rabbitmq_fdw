@@ -2,6 +2,7 @@ from multicorn import ForeignDataWrapper
 from multicorn.utils import log_to_postgres as log 
 
 from logging import ERROR
+from logging import INFO
 import pika
 import uuid 
 import json 
@@ -38,18 +39,32 @@ class RabbitmqFDW(ForeignDataWrapper):
         self.connectionParameters = pika.ConnectionParameters(self.host,
                                     self.port,
                                     self.virtual_host,
-                                    self.credentials)
+                                    self.credentials,
+                                    heartbeat=10 )
         self.data = list()
-        self.connection = pika.BlockingConnection(self.connectionParameters)
-        
-        self.channel = self.connection.channel()
+        self.connection = None  
+        self.channel = None 
+        self._connect()
 
-
-
+    def _connect(self): 
+        if not self.connection or self.connection.is_closed or self.connection.is_closing: 
+            self.connection = pika.BlockingConnection(self.connectionParameters)
+            self.channel = self.connection.channel()
 
     def __del__(self):
-            self.channel.close()
+            #self.channel.close()
             self.connection.close() 
+
+    def _publish(self, msg):
+        try:
+            self.channel.basic_publish(exchange=self.exchange,
+                            routing_key=self.queue,
+                            body=msg) 
+        except pika.exceptions.ConnectionClosed: 
+            self._connect()
+            self.channel.basic_publish(exchange=self.exchange,
+                            routing_key=self.queue,
+                            body=msg) 
 
     @property
     def rowid_column(self):
@@ -83,6 +98,5 @@ class RabbitmqFDW(ForeignDataWrapper):
             content = json.dumps(new_values)
         else: 
             content = new_values[self.column]
-        self.channel.basic_publish(exchange=self.exchange,
-                        routing_key=self.queue,
-                        body=content) 
+        self._publish(content)
+    

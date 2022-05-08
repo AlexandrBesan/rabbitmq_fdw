@@ -15,6 +15,8 @@ Main goal of the rabbitmq Foreign Data Wrapper is to
 ## Installation
 
 ```bash 
+wget https://github.com/AlexandrBesan/rabbitmq_fdw/archive/refs/heads/main.zip
+sudo su
 python3 setup.py install
 ```
 ## Usage
@@ -67,12 +69,5 @@ OPTIONS (
 ## To DO 
 1. Implementation of excecute method. 
 2. Type of the json fields mapped to the type of the table fields. 
-
-
-how to basic setup 
-https://github.com/kennethreitz/setup.py/tree/master/mypackage
-https://packaging.python.org/en/latest/tutorials/packaging-projects/
-
-https://github.com/pypa/sampleproject/blob/main/setup.py
 
 
