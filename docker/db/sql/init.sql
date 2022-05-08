@@ -1,5 +1,2 @@
-
-CREATE DATABASE admindb;
-
 CREATE EXTENSION plpython3u;
 CREATE EXTENSION multicorn;
