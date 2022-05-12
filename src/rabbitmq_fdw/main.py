@@ -6,6 +6,16 @@ from logging import INFO
 import pika
 import uuid 
 import json 
+import pika.exceptions
+
+
+connect_exceptions = (
+    pika.exceptions.ConnectionClosed,
+    pika.exceptions.AMQPConnectionError,
+    pika.exceptions.StreamLostError,
+    pika.exceptions.ChannelWrongStateError,
+    pika.exceptions.ChannelClosed,
+) 
 
 class RabbitmqFDW(ForeignDataWrapper):
     
@@ -39,20 +49,20 @@ class RabbitmqFDW(ForeignDataWrapper):
         self.connectionParameters = pika.ConnectionParameters(self.host,
                                     self.port,
                                     self.virtual_host,
-                                    self.credentials,
-                                    heartbeat=10 )
+                                    self.credentials)
         self.data = list()
-        self.connection = None  
-        self.channel = None 
-        self._connect()
+        self.connection =  pika.BlockingConnection(self.connectionParameters)  
+        self.channel =  self.connection.channel() 
 
-    def _connect(self): 
-        if not self.connection or self.connection.is_closed or self.connection.is_closing: 
+    def _connect(self):  
+        if not self.connection or self.connection.is_closed: 
             self.connection = pika.BlockingConnection(self.connectionParameters)
             self.channel = self.connection.channel()
 
+ 
+
     def __del__(self):
-            #self.channel.close()
+            self.channel.close()
             self.connection.close() 
 
     def _publish(self, msg):
@@ -60,37 +70,42 @@ class RabbitmqFDW(ForeignDataWrapper):
             self.channel.basic_publish(exchange=self.exchange,
                             routing_key=self.queue,
                             body=msg) 
-        except pika.exceptions.ConnectionClosed: 
+        except connect_exceptions as e: 
             self._connect()
             self.channel.basic_publish(exchange=self.exchange,
                             routing_key=self.queue,
                             body=msg) 
+    def _getMessage_count(self): 
+        try: 
+            queue = self.channel.queue_declare(self.queue , durable = True)
+        except connect_exceptions as e: 
+            self._connect()             
+            queue = self.channel.queue_declare(self.queue , durable = True)       
+        queue_length = queue.method.message_count 
+        return queue_length
 
+    def _getMessage(self): 
+        try: 
+            (method_frame, properties, body)=self.channel.basic_get(queue=self.queue , auto_ack=True)
+        except connect_exceptions as e: 
+            self._connect()       
+            (method_frame, properties, body)=self.channel.basic_get(queue=self.queue , auto_ack=True)
+        return body 
+        
     @property
     def rowid_column(self):
         log('rowid')
         return self.rowid ;
 
-    # def execute(self, quals, columns): 
-    #     pass
-    #     log('quals: %s' % quals)
-    #     log('columns: %s' % columns) 
-    #     limit = self.bulk_size
-
-    #     for method_frame, properties, body in self.channel.basic_get(queue=self.queue , auto_ack=True): 
-    #         print(method_frame)
-    #         print(properties)
-    #         print(body)      
-    #         line = {}
-    #         log('method_frame: %s' % method_frame)        
-    #         log('properties: %s' % properties)        
-    #         log('body: %s' % body)  
-    #         line['body'] = body.decode()
-    #         self.channel.basic_ack(method_frame.delivery_tag) 
-    #         if method_frame.delivery_tag == limit:
-    #             break 
-    #         yield line
-    #     self.channel.cancel()
+    def execute(self, quals, columns):   
+        limit = self.bulk_size
+        queue_length = self._getMessage_count()
+        for i in range(min(queue_length, limit )):
+            body = self._getMessage()
+            line = {} 
+            line['body'] = body.decode() 
+            yield line 
+ 
 
     def insert(self, new_values): 
         log('new_values: %s' % new_values) 
