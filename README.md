@@ -24,9 +24,20 @@ First thing is to create server with wrapper to rabbitmq_fdw
 ```sql 
 CREATE SERVER rabbitmq FOREIGN DATA WRAPPER multicorn
 OPTIONS (
-  wrapper 'rabbitmq_fdw.RabbitmqFDW'
+  wrapper 'rabbitmq_fdw.RabbitmqFDW',
+  host 'rabbitmq',
+  virtual_host '/',
+  port '5672',
+  exchange ''
 );
 
+```
+for the server you should create user mapping to the user/password on rabbitmq accordinly to your roles in DB.
+```sql 
+CREATE USER MAPPING FOR public
+SERVER rabbitmq
+OPTIONS (username 'quest', password 'quest')
+;
 ```
 
 The next is to creade foreign table with all option needed 
@@ -35,16 +46,10 @@ There is option column, if there is value in that column - with insert to the ra
 CREATE FOREIGN TABLE test  (
     body
 )
-SERVER testrb
-OPTIONS (
-    host 'rabbitmq',
-    virtual_host '/',
+SERVER rabbitmq
+OPTIONS ( 
     bulk_size '10',
-    queue 'externally_configured_queue',
-    port '5672',
-    username 'quest',
-    password 'quest',
-    exchange '',
+    queue 'externally_configured_queue', 
     column 'body'
 );
 ```
@@ -53,16 +58,10 @@ OPTIONS (
 CREATE FOREIGN TABLE test  (
     body
 )
-SERVER testrb
-OPTIONS (
-    host 'rabbitmq',
-    virtual_host '/',
+SERVER rabbitmq
+OPTIONS ( 
     bulk_size '10',
-    queue 'externally_configured_queue',
-    port '5672',
-    username 'quest',
-    password 'quest',
-    exchange '',
+    queue 'externally_configured_queue',  
     column 'body'
 );
 ```
