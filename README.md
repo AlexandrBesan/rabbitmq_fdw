@@ -61,12 +61,62 @@ CREATE FOREIGN TABLE test  (
 SERVER rabbitmq
 OPTIONS ( 
     bulk_size '10',
-    queue 'externally_configured_queue',  
-    column 'body'
+    queue 'externally_configured_queue'
 );
 ```
+
+## Alternative usage by functions 
+
+The same there is need to create objects FOREIGN DATA WRAPPER , SERVER and USER MAPPING. 
+
+Function to push to the queue by using rabbitmq_fdw library 
+```sql 
+
+CREATE OR REPLACE FUNCTION rabbitmq_push(
+    body json,
+    bulk_size varchar(2) = '10',
+    queue  varchar(30) = 'externally_configured_queue'
+)
+RETURNS bool
+    LANGUAGE 'plpython3u'
+AS $BODY$
+    import rabbitmq_fdw
+    options = rabbitmq_fdw.getPostgresOptions(plpy, servername ='rabbitmq')
+    options['bulk_size'] = bulk_size
+    options['queue'] = queue
+    rmq = rabbitmq_fdw.RabbitmqConnector(options)
+    rmq.publish(body)
+    return True
+$BODY$;
+```
+
+Function to get from the queue (by bulk limit) by using rabbitmq_fdw library 
+```sql 
+CREATE OR REPLACE FUNCTION rabbitmq_get_message(
+    bulk_size int = 10,
+    queue  varchar(30) = 'externally_configured_queue'
+)
+RETURNS table ( body text)
+    LANGUAGE 'plpython3u'
+AS $BODY$
+    import rabbitmq_fdw
+    options = rabbitmq_fdw.getPostgresOptions(plpy, servername = 'rabbitmq')
+    options['bulk_size'] = bulk_size
+    options['queue'] = queue
+    rmq = rabbitmq_fdw.RabbitmqConnector(options)
+    limit = bulk_size
+    queue_length = rmq.get_message_count()
+    result = []
+    for i in range(min(queue_length, limit )):
+        body =  rmq.get_message()
+        line = {}
+        line['body'] = body.decode()
+        result.append(line)
+    return result
+$BODY$;
+```
 ## To DO 
-1. Implementation of excecute method. 
-2. Type of the json fields mapped to the type of the table fields. 
+
+1. Type of the json fields mapped to the type of the table fields. 
 
 
