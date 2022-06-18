@@ -44,7 +44,7 @@ The next is to creade foreign table with all option needed
 There is option column, if there is value in that column - with insert to the rabbitmq server to the queue will be published only value from that column. 
 ```sql 
 CREATE FOREIGN TABLE test  (
-    body
+   body text
 )
 SERVER rabbitmq
 OPTIONS ( 
@@ -56,7 +56,7 @@ OPTIONS (
 , if there is value in that column is ommited  - with insert to the rabbitmq server to the queue will be published  the whole row in the table transformed to the json (key - column name). For now all types in json - string. 
 ```sql 
 CREATE FOREIGN TABLE test  (
-    body
+    body text
 )
 SERVER rabbitmq
 OPTIONS ( 
@@ -71,49 +71,41 @@ The same there is need to create objects FOREIGN DATA WRAPPER , SERVER and USER 
 
 Function to push to the queue by using rabbitmq_fdw library 
 ```sql 
-
 CREATE OR REPLACE FUNCTION rabbitmq_push(
     body json,
-    bulk_size varchar(2) = '10',
-    queue  varchar(30) = 'externally_configured_queue'
+    servername varchar(30) ='rabbitmq' ,
+    queue  varchar(30) = 'externally_configured_queue',
+    bulk_size int = 10
 )
 RETURNS bool
     LANGUAGE 'plpython3u'
 AS $BODY$
     import rabbitmq_fdw
-    options = rabbitmq_fdw.getPostgresOptions(plpy, servername ='rabbitmq')
-    options['bulk_size'] = bulk_size
-    options['queue'] = queue
-    rmq = rabbitmq_fdw.RabbitmqConnector(options)
-    rmq.publish(body)
+    rmq = rabbitmq_fdw.RabbitmqConnectorPLPY(plpy, servername  , queue , bulk_size)
+    rmq.push(body)
     return True
 $BODY$;
+
 ```
+
 
 Function to get from the queue (by bulk limit) by using rabbitmq_fdw library 
 ```sql 
+
 CREATE OR REPLACE FUNCTION rabbitmq_get_message(
-    bulk_size int = 10,
-    queue  varchar(30) = 'externally_configured_queue'
+    servername varchar(30) ='rabbitmq' ,
+    queue  varchar(30) = 'externally_configured_queue',
+    bulk_size int = 10
 )
 RETURNS table ( body text)
     LANGUAGE 'plpython3u'
 AS $BODY$
     import rabbitmq_fdw
-    options = rabbitmq_fdw.getPostgresOptions(plpy, servername = 'rabbitmq')
-    options['bulk_size'] = bulk_size
-    options['queue'] = queue
-    rmq = rabbitmq_fdw.RabbitmqConnector(options)
-    limit = bulk_size
-    queue_length = rmq.get_message_count()
-    result = []
-    for i in range(min(queue_length, limit )):
-        body =  rmq.get_message()
-        line = {}
-        line['body'] = body.decode()
-        result.append(line)
+    rmq = rabbitmq_fdw.RabbitmqConnectorPLPY(plpy, servername  , queue , bulk_size)
+    result = rmq.get_bulk_message()
     return result
 $BODY$;
+
 ```
 ## To DO 
 
