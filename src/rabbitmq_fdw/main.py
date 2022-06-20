@@ -5,6 +5,7 @@ from logging import ERROR
 from logging import INFO
 import uuid 
 import json 
+from json import JSONDecodeError
 
 from .RabbitmqConnector import RabbitmqConnector
 
@@ -38,7 +39,15 @@ class RabbitmqFDW(ForeignDataWrapper):
         for i in range(min(queue_length, limit )):
             body =  self.rabbitmq.get_message()
             line = {} 
-            line['body'] = body.decode() 
+            if self.isTable: 
+                for col in self.columns:
+                    try: 
+                        data = json.loads( body.decode() )
+                    except JSONDecodeError: 
+                        log("Wrong format json"  , ERROR)  
+                    line[col] = data[col] 
+            else: 
+                line[self.column] = body.decode() 
             yield line 
  
 

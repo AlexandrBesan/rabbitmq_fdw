@@ -106,9 +106,4 @@ AS $BODY$
     return result
 $BODY$;
 
-```
-## To DO 
-
-1. Type of the json fields mapped to the type of the table fields. 
-
-
+``` 
